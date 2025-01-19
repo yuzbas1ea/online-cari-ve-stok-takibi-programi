@@ -4,7 +4,6 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
-from wtforms.widgets import DateTimeInput
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import datetime
@@ -12,6 +11,7 @@ import datetime
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///borc_stok.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -385,24 +385,4 @@ def dashboard():
     return render_template('dashboard.html', current_debt=current_debt)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        
-        users = [
-            {'username': 'turhanveteriner', 'email': 'turhanveteriner_unique_new@example.com', 'password': 'sifre1'},
-            {'username': 'iyielveteriner', 'email': 'iyielveteriner_1_unique_new@example.com', 'password': 'sifre2'},
-            {'username': 'kullanici3_1', 'email': 'kullanici3_1_unique_new@example.com', 'password': 'sifre3'}
-        ]
-
-        for user_data in users:
-            existing_user = User.query.filter_by(username=user_data['username']).first()
-            if existing_user:
-                existing_user.email = user_data['email']
-            else:
-                new_user = User(username=user_data['username'], email=user_data['email'])
-                new_user.set_password(user_data['password'])
-                db.session.add(new_user)
-
-        db.session.commit()
-    
     app.run(debug=True, port=5001, host='0.0.0.0')
