@@ -1,1 +1,1 @@
-web: gunicorn CariTakip.CariTakipWeb:app
+web: gunicorn CariTakipWeb:app
