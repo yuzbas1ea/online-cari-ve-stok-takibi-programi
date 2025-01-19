@@ -1,1 +1,0 @@
-from .CariTakipWeb import app
