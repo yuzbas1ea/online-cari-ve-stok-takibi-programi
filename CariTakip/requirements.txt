@@ -1,0 +1,17 @@
+# requirements.txt
+
+# Sadece macOS üzerinde kurulacak PyObjC
+PyObjC; sys_platform == 'darwin'
+
+# Diğer gereksinimler
+requests
+numpy
+pandas
+flask
+flask_sqlalchemy
+flask_login
+flask_wtf
+wtforms
+werkzeug
+flask_migrate
+gunicorn
