@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Giriş Yap - Özdemir Veteriner Kliniği{% endblock %}
+{% block content %}
+    <div class="login-form">
+        <h2 class="text-center mb-4">Giriş Yap</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-danger" role="alert">
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.username.label(class="sr-only") }}
+                {{ form.username(class="form-control form-control-lg", placeholder="Kullanıcı Adı") }}
+            </div>
+            <div class="form-group">
+                {{ form.password.label(class="sr-only") }}
+                {{ form.password(class="form-control form-control-lg", placeholder="Şifre") }}
+            </div>
+            {{ form.submit(class="btn btn-primary btn-block btn-lg") }}
+        </form>
+        <p class="text-center mt-3"><a href="{{ url_for('register') }}">Kayıt Ol</a></p>
+    </div>
+{% endblock %}
