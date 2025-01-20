@@ -1,1 +1,1 @@
-web: flask db upgrade && gunicorn -b 0.0.0.0:$PORT CariTakip.CariTakipWeb:app
+web: flask --app CariTakip.CariTakipWeb:app db upgrade && gunicorn -b 0.0.0.0:$PORT CariTakip.CariTakipWeb:app
