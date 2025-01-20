@@ -24,8 +24,6 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), nullable=False, unique=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    debts = db.relationship('Debt', backref='user', lazy=True)
-    payments = db.relationship('Payment', backref='user', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -115,47 +113,30 @@ class DebtForm(FlaskForm):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    return User.query.get(int(user_id))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            return redirect(url_for('index'))
-        flash('Kullanıcı adı veya şifre hatalı')
-    return render_template('login.html', form=form)
+    # Directly redirect to the index without login check
+    return redirect(url_for('index'))
 
 @app.route('/logout')
-@login_required
 def logout():
-    logout_user()
-    return redirect(url_for('login'))
+    # Since there's no actual login, logout just redirects back to index
+    return redirect(url_for('index'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    form = RegisterForm()
-    if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data)
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash('Kayıt başarılı, lütfen giriş yapın!')
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form)
+    # You might want to keep registration or remove it based on your needs
+    if request.method == 'POST':
+        flash('Kayıt yapılmadı çünkü otomatik giriş yapılıyor.')
+    return redirect(url_for('index'))
 
 @app.route('/')
 def root():
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 @app.route('/index')
-@login_required
 def index():
     borclar = Debtor.query.all()
     stocks = Stock.query.all()
@@ -379,15 +360,14 @@ def calculate_current_debt(debtor_id):
     return total_debt - total_payment
 
 @app.route('/dashboard')
-@login_required
 def dashboard():
-    current_debt = calculate_current_debt(current_user.id)
+    current_debt = calculate_current_debt(1)  # Assuming user_id = 1 for simplicity
     return render_template('dashboard.html', current_debt=current_debt)
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Bu, göç sistemi kullanırken gereksiz, ama ilk başlatma için burada bırakılabilir.
-        
+        db.create_all()  # This might be unnecessary if using migration, but left for initial setup.
+
         users = [
             {'username': 'turhanveteriner', 'email': 'turhanveteriner_unique_new@example.com', 'password': 'sifre1'},
             {'username': 'iyielveteriner', 'email': 'iyielveteriner_1_unique_new@example.com', 'password': 'sifre2'},
