@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
@@ -16,10 +15,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///borc_stok.db'
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-
-class User(UserMixin, db.Model):
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False, unique=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -111,25 +107,16 @@ class DebtForm(FlaskForm):
     date = DateField('Tarih', validators=[DataRequired()], default=datetime.date.today)
     submit = SubmitField('Borç Ekle')
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Directly redirect to the index without login check
     return redirect(url_for('index'))
 
 @app.route('/logout')
 def logout():
-    # Since there's no actual login, logout just redirects back to index
     return redirect(url_for('index'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # You might want to keep registration or remove it based on your needs
-    if request.method == 'POST':
-        flash('Kayıt yapılmadı çünkü otomatik giriş yapılıyor.')
     return redirect(url_for('index'))
 
 @app.route('/')
@@ -140,10 +127,9 @@ def root():
 def index():
     borclar = Debtor.query.all()
     stocks = Stock.query.all()
-    return render_template('index.html', borclar=borclar, stocks=stocks, current_user=current_user)
+    return render_template('index.html', borclar=borclar, stocks=stocks, current_user=None)
 
 @app.route('/cari_takip', methods=['GET', 'POST'])
-@login_required
 def cari_takip():
     debtors = Debtor.query.all()
     form = AddDebtorForm()
@@ -171,7 +157,6 @@ def cari_takip():
     return render_template('cari_takip.html', debtors=debtors, debtor_debts=debtor_debts, form=form)
 
 @app.route('/debtors/<int:debtor_id>', methods=['GET', 'POST'])
-@login_required
 def debtor_detail(debtor_id):
     debtor = Debtor.query.get_or_404(debtor_id)
     debt_form = AddDebtForm()
@@ -182,7 +167,7 @@ def debtor_detail(debtor_id):
             if debt_form.validate_on_submit():
                 try:
                     debt = Debt(
-                        user_id=current_user.id,
+                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -208,7 +193,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=current_user.id,
+                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -245,7 +230,6 @@ def debtor_detail(debtor_id):
                            current_debt=current_debt)
 
 @app.route('/delete_debtor/<int:debtor_id>', methods=['POST'])
-@login_required
 def delete_debtor(debtor_id):
     debtor = Debtor.query.get_or_404(debtor_id)
     for debt in debtor.debts:
@@ -257,13 +241,12 @@ def delete_debtor(debtor_id):
     return redirect(url_for('cari_takip'))
 
 @app.route('/debtors/<int:debtor_id>/add_debt', methods=['POST'])
-@login_required
 def add_debt(debtor_id):
     form = DebtForm()
     if form.validate_on_submit():
         try:
             debt = Debt(
-                user_id=current_user.id,
+                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -278,7 +261,6 @@ def add_debt(debtor_id):
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
 @app.route('/debtors/<int:debtor_id>/add_payment', methods=['POST'])
-@login_required
 def add_payment(debtor_id):
     form = AddPaymentForm()
     if form.validate_on_submit():
@@ -286,7 +268,8 @@ def add_payment(debtor_id):
             payment = Payment(
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
-                date=form.date.data
+                date=form.date.data,
+                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
             )
             db.session.add(payment)
             db.session.commit()
@@ -298,14 +281,12 @@ def add_payment(debtor_id):
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
 @app.route('/stok_takip')
-@login_required
 def stok_takip():
     stocks = Stock.query.all()
     form = StockForm()
     return render_template('stok_takip.html', stocks=stocks, form=form)
 
 @app.route('/add_stock', methods=['POST'])
-@login_required
 def add_stock():
     form = StockForm()
     if form.validate_on_submit():
@@ -321,7 +302,6 @@ def add_stock():
     return render_template('stok_takip.html', stocks=Stock.query.all(), form=form)
 
 @app.route('/update_stock/<int:stock_id>', methods=['GET', 'POST'])
-@login_required
 def update_stock(stock_id):
     stock = Stock.query.get_or_404(stock_id)
     form = UpdateStockForm()
@@ -337,7 +317,6 @@ def update_stock(stock_id):
     return render_template('update_stock.html', stock=stock, form=form)
 
 @app.route('/delete_stock/<int:stock_id>', methods=['POST'])
-@login_required
 def delete_stock(stock_id):
     stock = Stock.query.get_or_404(stock_id)
     db.session.delete(stock)
@@ -346,7 +325,6 @@ def delete_stock(stock_id):
     return redirect(url_for('stok_takip'))
 
 @app.route('/tahsilat', methods=['GET', 'POST'])
-@login_required
 def tahsilat():
     form = AddPaymentForm()
     if form.validate_on_submit():
@@ -361,7 +339,7 @@ def calculate_current_debt(debtor_id):
 
 @app.route('/dashboard')
 def dashboard():
-    current_debt = calculate_current_debt(1)  # Assuming user_id = 1 for simplicity
+    current_debt = calculate_current_debt(1)  # Sabit bir kullanıcı ID'si veya anonim
     return render_template('dashboard.html', current_debt=current_debt)
 
 if __name__ == '__main__':
