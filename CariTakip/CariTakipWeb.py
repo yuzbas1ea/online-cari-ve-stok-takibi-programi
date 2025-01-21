@@ -114,6 +114,7 @@ def create_default_user():
         new_user.set_password('default_password')
         db.session.add(new_user)
         db.session.commit()
+        print("Default user created")
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -383,5 +384,5 @@ if __name__ == '__main__':
 
         # Default kullanıcıyı oluştur
         create_default_user()
-    
+
     app.run(debug=True, port=5001, host='0.0.0.0')
