@@ -6,7 +6,6 @@ from wtforms import StringField, FloatField, IntegerField, SubmitField, Password
 from wtforms.validators import DataRequired, Email, Length, EqualTo
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
-from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 import datetime
 
 app = Flask(__name__)
@@ -16,11 +15,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-class User(UserMixin, db.Model):
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False, unique=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -112,55 +107,29 @@ class DebtForm(FlaskForm):
     date = DateField('Tarih', validators=[DataRequired()], default=datetime.date.today)
     submit = SubmitField('Borç Ekle')
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            flash('Giriş başarılı.', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Geçersiz kullanıcı adı veya şifre.', 'danger')
-    return render_template('login.html', form=form)
+    return redirect(url_for('index'))
 
 @app.route('/logout')
-@login_required
 def logout():
-    logout_user()
-    flash('Başarıyla çıkış yaptınız.', 'success')
     return redirect(url_for('index'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegisterForm()
-    if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data)
-        user.set_password(form.password.data)
-        db.session.add(user)
-        db.session.commit()
-        flash('Kayıt başarılı. Giriş yapabilirsiniz.', 'success')
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form)
+    return redirect(url_for('index'))
 
 @app.route('/')
 def root():
     return redirect(url_for('index'))
 
 @app.route('/index')
-@login_required
 def index():
     borclar = Debtor.query.all()
     stocks = Stock.query.all()
-    return render_template('index.html', borclar=borclar, stocks=stocks, current_user=current_user)
+    return render_template('index.html', borclar=borclar, stocks=stocks, current_user=None)
 
 @app.route('/cari_takip', methods=['GET', 'POST'])
-@login_required
 def cari_takip():
     debtors = Debtor.query.all()
     form = AddDebtorForm()
@@ -188,7 +157,6 @@ def cari_takip():
     return render_template('cari_takip.html', debtors=debtors, debtor_debts=debtor_debts, form=form)
 
 @app.route('/debtors/<int:debtor_id>', methods=['GET', 'POST'])
-@login_required
 def debtor_detail(debtor_id):
     debtor = Debtor.query.get_or_404(debtor_id)
     debt_form = AddDebtForm()
@@ -199,7 +167,7 @@ def debtor_detail(debtor_id):
             if debt_form.validate_on_submit():
                 try:
                     debt = Debt(
-                        user_id=current_user.id,  # Oturum açan kullanıcının ID'si
+                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -225,7 +193,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=current_user.id,  # Oturum açan kullanıcının ID'si
+                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -262,7 +230,6 @@ def debtor_detail(debtor_id):
                            current_debt=current_debt)
 
 @app.route('/delete_debtor/<int:debtor_id>', methods=['POST'])
-@login_required
 def delete_debtor(debtor_id):
     debtor = Debtor.query.get_or_404(debtor_id)
     for debt in debtor.debts:
@@ -274,13 +241,12 @@ def delete_debtor(debtor_id):
     return redirect(url_for('cari_takip'))
 
 @app.route('/debtors/<int:debtor_id>/add_debt', methods=['POST'])
-@login_required
 def add_debt(debtor_id):
     form = DebtForm()
     if form.validate_on_submit():
         try:
             debt = Debt(
-                user_id=current_user.id,  # Oturum açan kullanıcının ID'si
+                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -295,7 +261,6 @@ def add_debt(debtor_id):
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
 @app.route('/debtors/<int:debtor_id>/add_payment', methods=['POST'])
-@login_required
 def add_payment(debtor_id):
     form = AddPaymentForm()
     if form.validate_on_submit():
@@ -304,7 +269,7 @@ def add_payment(debtor_id):
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=current_user.id  # Oturum açan kullanıcının ID'si
+                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
             )
             db.session.add(payment)
             db.session.commit()
@@ -316,14 +281,12 @@ def add_payment(debtor_id):
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
 @app.route('/stok_takip')
-@login_required
 def stok_takip():
     stocks = Stock.query.all()
     form = StockForm()
     return render_template('stok_takip.html', stocks=stocks, form=form)
 
 @app.route('/add_stock', methods=['POST'])
-@login_required
 def add_stock():
     form = StockForm()
     if form.validate_on_submit():
@@ -339,7 +302,6 @@ def add_stock():
     return render_template('stok_takip.html', stocks=Stock.query.all(), form=form)
 
 @app.route('/update_stock/<int:stock_id>', methods=['GET', 'POST'])
-@login_required
 def update_stock(stock_id):
     stock = Stock.query.get_or_404(stock_id)
     form = UpdateStockForm()
@@ -355,7 +317,6 @@ def update_stock(stock_id):
     return render_template('update_stock.html', stock=stock, form=form)
 
 @app.route('/delete_stock/<int:stock_id>', methods=['POST'])
-@login_required
 def delete_stock(stock_id):
     stock = Stock.query.get_or_404(stock_id)
     db.session.delete(stock)
@@ -364,7 +325,6 @@ def delete_stock(stock_id):
     return redirect(url_for('stok_takip'))
 
 @app.route('/tahsilat', methods=['GET', 'POST'])
-@login_required
 def tahsilat():
     form = AddPaymentForm()
     if form.validate_on_submit():
@@ -378,7 +338,6 @@ def calculate_current_debt(debtor_id):
     return total_debt - total_payment
 
 @app.route('/dashboard')
-@login_required
 def dashboard():
     current_debt = calculate_current_debt(1)  # Sabit bir kullanıcı ID'si veya anonim
     return render_template('dashboard.html', current_debt=current_debt)
