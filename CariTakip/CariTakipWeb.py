@@ -18,25 +18,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False, unique=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-with app.app_context():
-    db.create_all()
-
-    # Check if user with id 1 exists
-    user = User.query.get(1)
-    if not user:
-        # Create the default user with id 1
-        default_user = User(id=1, username='default_user', email='default_user@example.com')
-        default_user.set_password('default_password')
-        db.session.add(default_user)
-        db.session.commit()
-        print("Anonim kullanıcı başarıyla eklendi.")
-    else:
-        print("Anonim kullanıcı zaten mevcut.")
+    password_hash = db.Column(db.String(256), nullable=False)  # Uzunluğu artırıldı
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
