@@ -23,6 +23,24 @@ class User(db.Model):
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
+with app.app_context():
+    db.create_all()
+
+    # Check if user with id 1 exists
+    user = User.query.get(1)
+    if not user:
+        # Create the default user with id 1
+        default_user = User(id=1, username='default_user', email='default_user@example.com')
+        default_user.set_password('default_password')
+        db.session.add(default_user)
+        db.session.commit()
+        print("Anonim kullanıcı başarıyla eklendi.")
+    else:
+        print("Anonim kullanıcı zaten mevcut.")
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
