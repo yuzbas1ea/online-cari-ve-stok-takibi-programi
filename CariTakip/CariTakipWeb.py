@@ -4,14 +4,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
-from wtforms.widgets import DateTimeInput
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-# PostgreSQL bağlantı bilgisi ortam değişkeninden alınacak
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 
 db = SQLAlchemy(app)
@@ -109,6 +107,15 @@ class DebtForm(FlaskForm):
     date = DateField('Tarih', validators=[DataRequired()], default=datetime.date.today)
     submit = SubmitField('Borç Ekle')
 
+@app.before_first_request
+def create_default_user():
+    existing_user = User.query.filter_by(username='default_user').first()
+    if not existing_user:
+        new_user = User(username='default_user', email='default@example.com')
+        new_user.set_password('default_password')
+        db.session.add(new_user)
+        db.session.commit()
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     return redirect(url_for('index'))
@@ -168,8 +175,13 @@ def debtor_detail(debtor_id):
         if 'debt_submit' in request.form:
             if debt_form.validate_on_submit():
                 try:
+                    user = User.query.filter_by(username='default_user').first()
+                    if user is None:
+                        flash('Default user bulunamadı.', 'error')
+                        return redirect(url_for('debtor_detail', debtor_id=debtor_id))
+
                     debt = Debt(
-                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                        user_id=user.id,  # Default user ID kullan
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -195,7 +207,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                            user_id=User.query.filter_by(username='default_user').first().id,  # Default user ID kullan
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -247,8 +259,13 @@ def add_debt(debtor_id):
     form = DebtForm()
     if form.validate_on_submit():
         try:
+            user = User.query.filter_by(username='default_user').first()
+            if user is None:
+                flash('Default user bulunamadı.', 'error')
+                return redirect(url_for('debtor_detail', debtor_id=debtor_id))
+
             debt = Debt(
-                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                user_id=user.id,  # Default user ID kullan
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -271,7 +288,7 @@ def add_payment(debtor_id):
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                user_id=User.query.filter_by(username='default_user').first().id  # Default user ID kullan
             )
             db.session.add(payment)
             db.session.commit()
