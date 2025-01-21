@@ -3,14 +3,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
-from wtforms.widgets import DateTimeInput
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///borc_stok.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://db_user:EEGnGEuQQy0OmJ1wFn09BtdDQjfgEBO5@dpg-cu80hu9opnds73ej1mt0-a/borc_stok_db'
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -38,7 +37,7 @@ class Debtor(db.Model):
 
 class Debt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable olarak işaretledik
     debtor_id = db.Column(db.Integer, db.ForeignKey('debtor.id'), nullable=False)
     product_name = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -49,7 +48,7 @@ class Debt(db.Model):
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     debt_id = db.Column(db.Integer, db.ForeignKey('debt.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable olarak işaretledik
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -167,7 +166,7 @@ def debtor_detail(debtor_id):
             if debt_form.validate_on_submit():
                 try:
                     debt = Debt(
-                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                        user_id=None,  # Anonim kullanıcı olarak None kullanımı
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -193,7 +192,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                            user_id=None,  # Anonim kullanıcı olarak None kullanımı
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -246,7 +245,7 @@ def add_debt(debtor_id):
     if form.validate_on_submit():
         try:
             debt = Debt(
-                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                user_id=None,  # Anonim kullanıcı olarak None kullanımı
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -269,7 +268,7 @@ def add_payment(debtor_id):
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
+                user_id=None  # Anonim kullanıcı olarak None kullanımı
             )
             db.session.add(payment)
             db.session.commit()
