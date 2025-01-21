@@ -1,4 +1,3 @@
-import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -11,7 +10,7 @@ import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://db_user:EEGnGEuQQy0OmJ1wFn09BtdDQjfgEBO5@dpg-cu80hu9opnds73ej1mt0-a/borc_stok_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///borc_stok.db'
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -229,28 +228,6 @@ def debtor_detail(debtor_id):
                            total_debt=total_debt,
                            total_payment=total_payment,
                            current_debt=current_debt)
-                        return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-                except Exception as e:
-                    db.session.rollback()
-                    flash(f'Tahsilat eklenirken bir hata oluştu: {str(e)}', 'error')
-            else:
-                flash('Form doğrulanamadı. Lütfen tüm alanları doğru doldurduğunuzdan emin olun.', 'error')
-
-    debts = Debt.query.filter_by(debtor_id=debtor_id).all()
-    payments = Payment.query.filter(Payment.debt_id.in_([debt.id for debt in debts])).all()
-    total_debt = sum(debt.amount for debt in debts)
-    total_payment = sum(payment.amount for payment in payments)
-    current_debt = total_debt - total_payment
-
-    return render_template('debtor_detail.html', 
-                           debtor=debtor, 
-                           debt_form=debt_form, 
-                           payment_form=payment_form,
-                           debts=debts,
-                           payments=payments,
-                           total_debt=total_debt,
-                           total_payment=total_payment,
-                           current_debt=current_debt)
 
 @app.route('/delete_debtor/<int:debtor_id>', methods=['POST'])
 def delete_debtor(debtor_id):
@@ -367,14 +344,23 @@ def dashboard():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # Bu, veritabanı tablolarını oluşturur
+        db.create_all()  # This might be unnecessary if using migration, but left for initial setup.
 
-        # Anonim kullanıcıyı ekleyelim
-        default_user = User.query.get(1)
-        if not default_user:
-            default_user = User(id=1, username='default_user', email='default_user@example.com')
-            default_user.set_password('default_password')
-            db.session.add(default_user)
-            db.session.commit()
+        users = [
+            {'username': 'turhanveteriner', 'email': 'turhanveteriner_unique_new@example.com', 'password': 'sifre1'},
+            {'username': 'iyielveteriner', 'email': 'iyielveteriner_1_unique_new@example.com', 'password': 'sifre2'},
+            {'username': 'kullanici3_1', 'email': 'kullanici3_1_unique_new@example.com', 'password': 'sifre3'}
+        ]
+
+        for user_data in users:
+            existing_user = User.query.filter_by(username=user_data['username']).first()
+            if existing_user:
+                existing_user.email = user_data['email']
+            else:
+                new_user = User(username=user_data['username'], email=user_data['email'])
+                new_user.set_password(user_data['password'])
+                db.session.add(new_user)
+
+        db.session.commit()
     
     app.run(debug=True, port=5001, host='0.0.0.0')
