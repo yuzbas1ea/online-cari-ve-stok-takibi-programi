@@ -10,7 +10,8 @@ import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://db_user:EEGnGEuQQy0OmJ1wFn09BtdDQjfgEBO5@dpg-cu80hu9opnds73ej1mt0-a/borc_stok_db'
+# PostgreSQL bağlantı bilgisi ortam değişkeninden alınacak
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
