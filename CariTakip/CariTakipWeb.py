@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
+from wtforms.widgets import DateTimeInput
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import datetime
@@ -166,12 +167,6 @@ def debtor_detail(debtor_id):
         if 'debt_submit' in request.form:
             if debt_form.validate_on_submit():
                 try:
-                    # Kullanıcının var olup olmadığını kontrol edin
-                    user = User.query.get(1)
-                    if not user:
-                        flash('Kullanıcı mevcut değil, lütfen kullanıcı ekleyin.', 'error')
-                        return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-                    
                     debt = Debt(
                         user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                         debtor_id=debtor_id,
@@ -234,6 +229,7 @@ def debtor_detail(debtor_id):
                            total_debt=total_debt,
                            total_payment=total_payment,
                            current_debt=current_debt)
+
 @app.route('/delete_debtor/<int:debtor_id>', methods=['POST'])
 def delete_debtor(debtor_id):
     debtor = Debtor.query.get_or_404(debtor_id)
