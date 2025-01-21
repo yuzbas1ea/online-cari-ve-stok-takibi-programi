@@ -107,15 +107,6 @@ class DebtForm(FlaskForm):
     date = DateField('Tarih', validators=[DataRequired()], default=datetime.date.today)
     submit = SubmitField('Borç Ekle')
 
-@app.before_first_request
-def create_default_user():
-    existing_user = User.query.filter_by(username='default_user').first()
-    if not existing_user:
-        new_user = User(username='default_user', email='default@example.com')
-        new_user.set_password('default_password')
-        db.session.add(new_user)
-        db.session.commit()
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     return redirect(url_for('index'))
@@ -381,5 +372,13 @@ if __name__ == '__main__':
                 db.session.add(new_user)
 
         db.session.commit()
+
+        # Default kullanıcıyı oluştur
+        existing_user = User.query.filter_by(username='default_user').first()
+        if not existing_user:
+            new_user = User(username='default_user', email='default@example.com')
+            new_user.set_password('default_password')
+            db.session.add(new_user)
+            db.session.commit()
     
     app.run(debug=True, port=5001, host='0.0.0.0')
