@@ -37,7 +37,7 @@ class Debtor(db.Model):
 
 class Debt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable olarak işaretledik
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=1)  # Varsayılan bir değer ile nullable=False olarak ayarlandı
     debtor_id = db.Column(db.Integer, db.ForeignKey('debtor.id'), nullable=False)
     product_name = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -48,7 +48,7 @@ class Debt(db.Model):
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     debt_id = db.Column(db.Integer, db.ForeignKey('debt.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable olarak işaretledik
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=1)  # Varsayılan bir değer ile nullable=False olarak ayarlandı
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -166,7 +166,7 @@ def debtor_detail(debtor_id):
             if debt_form.validate_on_submit():
                 try:
                     debt = Debt(
-                        user_id=None,  # Anonim kullanıcı olarak None kullanımı
+                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -192,7 +192,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=None,  # Anonim kullanıcı olarak None kullanımı
+                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -245,7 +245,7 @@ def add_debt(debtor_id):
     if form.validate_on_submit():
         try:
             debt = Debt(
-                user_id=None,  # Anonim kullanıcı olarak None kullanımı
+                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -268,7 +268,7 @@ def add_payment(debtor_id):
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=None  # Anonim kullanıcı olarak None kullanımı
+                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
             )
             db.session.add(payment)
             db.session.commit()
