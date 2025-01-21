@@ -37,7 +37,7 @@ class Debtor(db.Model):
 
 class Debt(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=1)  # Varsayılan bir değer ile nullable=False olarak ayarlandı
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     debtor_id = db.Column(db.Integer, db.ForeignKey('debtor.id'), nullable=False)
     product_name = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -48,7 +48,7 @@ class Debt(db.Model):
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     debt_id = db.Column(db.Integer, db.ForeignKey('debt.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, default=1)  # Varsayılan bir değer ile nullable=False olarak ayarlandı
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -343,7 +343,18 @@ def dashboard():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()  # This might be unnecessary if using migration, but left for initial setup.
+        db.create_all()  # Veritabanı tablolarını oluşturur
+
+        # Anonim kullanıcıyı ekle
+        user = User.query.get(1)
+        if not user:
+            default_user = User(id=1, username='default_user', email='default_user@example.com')
+            default_user.set_password('default_password')
+            db.session.add(default_user)
+            db.session.commit()
+            print("Anonim kullanıcı başarıyla eklendi.")
+        else:
+            print("Anonim kullanıcı zaten mevcut.")
 
         users = [
             {'username': 'turhanveteriner', 'email': 'turhanveteriner_unique_new@example.com', 'password': 'sifre1'},
