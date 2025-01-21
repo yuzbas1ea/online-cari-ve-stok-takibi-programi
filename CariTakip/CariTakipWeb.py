@@ -268,6 +268,7 @@ def add_debt(debtor_id):
         try:
             user = User.query.filter_by(username='default_user').first()
             if user is None:
+                logger.error("Default user bulunamadı.")
                 flash('Default user bulunamadı.', 'error')
                 return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
@@ -283,6 +284,7 @@ def add_debt(debtor_id):
             return redirect(url_for('debtor_detail', debtor_id=debtor_id))
         except Exception as e:
             db.session.rollback()
+            logger.error(f'Borç eklenirken bir hata oluştu: {str(e)}')
             flash(f'Borç eklenirken bir hata oluştu: {str(e)}', 'error')
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
@@ -303,6 +305,7 @@ def add_payment(debtor_id):
             return redirect(url_for('debtor_detail', debtor_id=debtor_id))
         except Exception as e:
             db.session.rollback()
+            logger.error(f'Tahsilat eklenirken bir hata oluştu: {str(e)}')
             flash(f'Tahsilat eklenirken bir hata oluştu: {str(e)}', 'error')
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
@@ -324,6 +327,7 @@ def add_stock():
             return redirect(url_for('stok_takip'))
         except Exception as e:
             db.session.rollback()
+            logger.error(f'Stok eklenirken bir hata oluştu: {str(e)}')
             flash(f'Stok eklenirken bir hata oluştu: {str(e)}', 'error')
     return render_template('stok_takip.html', stocks=Stock.query.all(), form=form)
 
@@ -391,5 +395,11 @@ if __name__ == '__main__':
 
         # Default kullanıcıyı oluştur
         create_default_user()
+
+        user = User.query.filter_by(username='default_user').first()
+        if user is None:
+            logger.error("Default user oluşturulamadı.")
+        else:
+            logger.info(f"Default user başarıyla oluşturuldu: {user.username}")
 
     app.run(debug=True, port=5001, host='0.0.0.0')
