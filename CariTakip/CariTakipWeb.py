@@ -1,24 +1,19 @@
-import os
-import logging
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from wtforms import StringField, FloatField, IntegerField, SubmitField, PasswordField, DateField, DateTimeField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
+from wtforms.widgets import DateTimeInput
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://db_user:EEGnGEuQQy0OmJ1wFn09BtdDQjfgEBO5@dpg-cu80hu9opnds73ej1mt0-a/borc_stok_db')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
-# Logging configuration
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -112,17 +107,6 @@ class DebtForm(FlaskForm):
     date = DateField('Tarih', validators=[DataRequired()], default=datetime.date.today)
     submit = SubmitField('Borç Ekle')
 
-def create_default_user():
-    existing_user = User.query.filter_by(username='default_user').first()
-    if not existing_user:
-        new_user = User(username='default_user', email='default@example.com')
-        new_user.set_password('default_password')
-        db.session.add(new_user)
-        db.session.commit()
-        logger.info("Default user created successfully.")
-    else:
-        logger.info("Default user already exists.")
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     return redirect(url_for('index'))
@@ -182,13 +166,8 @@ def debtor_detail(debtor_id):
         if 'debt_submit' in request.form:
             if debt_form.validate_on_submit():
                 try:
-                    user = User.query.filter_by(username='default_user').first()
-                    if user is None:
-                        flash('Default user bulunamadı.', 'error')
-                        return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-
                     debt = Debt(
-                        user_id=user.id,  # Default user ID kullan
+                        user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                         debtor_id=debtor_id,
                         product_name=debt_form.product_name.data,
                         amount=debt_form.amount.data,
@@ -214,7 +193,7 @@ def debtor_detail(debtor_id):
                     else:
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=User.query.filter_by(username='default_user').first().id,  # Default user ID kullan
+                            user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -266,14 +245,8 @@ def add_debt(debtor_id):
     form = DebtForm()
     if form.validate_on_submit():
         try:
-            user = User.query.filter_by(username='default_user').first()
-            if user is None:
-                logger.error("Default user bulunamadı.")
-                flash('Default user bulunamadı.', 'error')
-                return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-
             debt = Debt(
-                user_id=user.id,  # Default user ID kullan
+                user_id=1,  # Anonim kullanıcı olarak sabit bir ID kullanımı
                 debtor_id=debtor_id,
                 amount=form.amount.data,
                 due_date=form.date.data
@@ -284,7 +257,6 @@ def add_debt(debtor_id):
             return redirect(url_for('debtor_detail', debtor_id=debtor_id))
         except Exception as e:
             db.session.rollback()
-            logger.error(f'Borç eklenirken bir hata oluştu: {str(e)}')
             flash(f'Borç eklenirken bir hata oluştu: {str(e)}', 'error')
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
@@ -297,7 +269,7 @@ def add_payment(debtor_id):
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=User.query.filter_by(username='default_user').first().id  # Default user ID kullan
+                user_id=1  # Anonim kullanıcı olarak sabit bir ID kullanımı
             )
             db.session.add(payment)
             db.session.commit()
@@ -305,7 +277,6 @@ def add_payment(debtor_id):
             return redirect(url_for('debtor_detail', debtor_id=debtor_id))
         except Exception as e:
             db.session.rollback()
-            logger.error(f'Tahsilat eklenirken bir hata oluştu: {str(e)}')
             flash(f'Tahsilat eklenirken bir hata oluştu: {str(e)}', 'error')
     return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
@@ -327,7 +298,6 @@ def add_stock():
             return redirect(url_for('stok_takip'))
         except Exception as e:
             db.session.rollback()
-            logger.error(f'Stok eklenirken bir hata oluştu: {str(e)}')
             flash(f'Stok eklenirken bir hata oluştu: {str(e)}', 'error')
     return render_template('stok_takip.html', stocks=Stock.query.all(), form=form)
 
@@ -392,14 +362,5 @@ if __name__ == '__main__':
                 db.session.add(new_user)
 
         db.session.commit()
-
-        # Default kullanıcıyı oluştur
-        create_default_user()
-
-        user = User.query.filter_by(username='default_user').first()
-        if user is None:
-            logger.error("Default user oluşturulamadı.")
-        else:
-            logger.info(f"Default user başarıyla oluşturuldu: {user.username}")
-
+    
     app.run(debug=True, port=5001, host='0.0.0.0')
