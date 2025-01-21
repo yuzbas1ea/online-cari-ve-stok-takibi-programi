@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
@@ -14,6 +15,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+# Logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -114,11 +119,9 @@ def create_default_user():
         new_user.set_password('default_password')
         db.session.add(new_user)
         db.session.commit()
-        print("Default user created")
-
-@app.before_first_request
-def before_first_request():
-    create_default_user()
+        logger.info("Default user created successfully.")
+    else:
+        logger.info("Default user already exists.")
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -181,12 +184,8 @@ def debtor_detail(debtor_id):
                 try:
                     user = User.query.filter_by(username='default_user').first()
                     if user is None:
-                        # Eğer varsayılan kullanıcı yoksa oluştur
-                        create_default_user()
-                        user = User.query.filter_by(username='default_user').first()
-                        if user is None:
-                            flash('Varsayılan kullanıcı oluşturulamadı veya bulunamadı. Lütfen veritabanı bağlantısını veya yapılandırmayı kontrol edin.', 'error')
-                            return redirect(url_for('debtor_detail', debtor_id=debtor_id))
+                        flash('Default user bulunamadı.', 'error')
+                        return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
                     debt = Debt(
                         user_id=user.id,  # Default user ID kullan
@@ -213,17 +212,9 @@ def debtor_detail(debtor_id):
                     if debt is None or debt.debtor_id != debtor_id:
                         flash('Geçersiz Borç ID.', 'error')
                     else:
-                        user = User.query.filter_by(username='default_user').first()
-                        if user is None:
-                            create_default_user()
-                            user = User.query.filter_by(username='default_user').first()
-                            if user is None:
-                                flash('Varsayılan kullanıcı oluşturulamadı veya bulunamadı. Lütfen veritabanı bağlantısını veya yapılandırmayı kontrol edin.', 'error')
-                                return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-
                         payment = Payment(
                             debt_id=debt_id,
-                            user_id=user.id,  # Default user ID kullan
+                            user_id=User.query.filter_by(username='default_user').first().id,  # Default user ID kullan
                             amount=payment_form.amount.data,
                             date=datetime.datetime.strptime(request.form['date'], '%Y-%m-%dT%H:%M')
                         )
@@ -277,11 +268,8 @@ def add_debt(debtor_id):
         try:
             user = User.query.filter_by(username='default_user').first()
             if user is None:
-                create_default_user()
-                user = User.query.filter_by(username='default_user').first()
-                if user is None:
-                    flash('Varsayılan kullanıcı oluşturulamadı veya bulunamadı. Lütfen veritabanı bağlantısını veya yapılandırmayı kontrol edin.', 'error')
-                    return redirect(url_for('debtor_detail', debtor_id=debtor_id))
+                flash('Default user bulunamadı.', 'error')
+                return redirect(url_for('debtor_detail', debtor_id=debtor_id))
 
             debt = Debt(
                 user_id=user.id,  # Default user ID kullan
@@ -303,19 +291,11 @@ def add_payment(debtor_id):
     form = AddPaymentForm()
     if form.validate_on_submit():
         try:
-            user = User.query.filter_by(username='default_user').first()
-            if user is None:
-                create_default_user()
-                user = User.query.filter_by(username='default_user').first()
-                if user is None:
-                    flash('Varsayılan kullanıcı oluşturulamadı veya bulunamadı. Lütfen veritabanı bağlantısını veya yapılandırmayı kontrol edin.', 'error')
-                    return redirect(url_for('debtor_detail', debtor_id=debtor_id))
-
             payment = Payment(
                 debt_id=form.debt_id.data,
                 amount=form.amount.data,
                 date=form.date.data,
-                user_id=user.id  # Default user ID kullan
+                user_id=User.query.filter_by(username='default_user').first().id  # Default user ID kullan
             )
             db.session.add(payment)
             db.session.commit()
@@ -380,7 +360,7 @@ def tahsilat():
 
 def calculate_current_debt(debtor_id):
     total_debt = db.session.query(db.func.sum(Debt.amount)).filter_by(debtor_id=debtor_id).scalar() or 0
-    total_payment = db.session.query(db.func.sum(Payment.amount)).filter(Payment.debt_id.in_(db.session.query(Debt.id).filter_by(debtor_id=debtor_id))).scalar() or 0
+    total_payment = db.session.query(db.func.sum(Payment.amount)).filter_by(debt_id=db.session.query(Debt.id).filter_by(debtor_id=debtor_id)).scalar() or 0
     return total_debt - total_payment
 
 @app.route('/dashboard')
